@@ -1,4 +1,4 @@
-# SOCWatch — AI-Powered SOC Lab
+# SOCWatch  AI-Powered SOC Lab
 
 **Topic:** AI-Powered SOC · **Focus:** Simulated Phishing Attack & Incident Response
 
