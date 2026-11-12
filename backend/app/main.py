@@ -1,4 +1,4 @@
-"""Aegis SOC Lab API entrypoint."""
+"""SOCWatch API entrypoint."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers.api import router
 
 app = FastAPI(
-    title="Aegis SOC Lab",
+    title="SOCWatch",
     description=(
         "AI-powered Security Operations Center training lab for simulated "
         "phishing attacks and incident response. Defensive education only."
@@ -30,7 +30,7 @@ app.include_router(router, prefix="/api")
 @app.get("/")
 def root() -> dict:
     return {
-        "name": "Aegis SOC Lab",
+        "name": "SOCWatch",
         "topic": "AI-Powered SOC — Simulated Phishing Attack & Incident Response",
         "docs": "/docs",
         "api": "/api/health",

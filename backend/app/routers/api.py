@@ -1,4 +1,4 @@
-"""Aegis SOC Lab HTTP API."""
+"""SOCWatch HTTP API."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ router = APIRouter()
 
 @router.get("/health")
 def health() -> dict:
-    return {"status": "ok", "service": "aegis-soc-lab"}
+    return {"status": "ok", "service": "socwatch-lab"}
 
 
 @router.get("/scenarios")

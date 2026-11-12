@@ -7,7 +7,7 @@ export function Layout() {
         <NavLink to="/" className="brand-mark">
           <div className="brand-glyph">◈</div>
           <div className="brand-word">
-            Aegis
+            SOCWatch
             <span>SOC Lab</span>
           </div>
         </NavLink>

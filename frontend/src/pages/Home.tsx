@@ -5,7 +5,7 @@ export function Home() {
     <section className="hero">
       <div className="hero-visual" aria-hidden="true" />
       <div className="hero-content">
-        <h1 className="hero-brand">Aegis</h1>
+        <h1 className="hero-brand">SOCWatch</h1>
         <p className="hero-headline">AI-powered SOC drills for phishing & incident response.</p>
         <p className="hero-sub">
           Practice triage, enrichment, containment, and NIST-aligned response against simulated

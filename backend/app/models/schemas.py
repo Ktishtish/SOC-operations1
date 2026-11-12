@@ -1,4 +1,4 @@
-"""Pydantic models for the Aegis SOC Lab API."""
+"""Pydantic models for the SOCWatch API."""
 
 from __future__ import annotations
 

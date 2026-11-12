@@ -4,7 +4,7 @@
 Browser (React SOC Console)
         │  /api/*
         ▼
-FastAPI (Aegis backend)
+FastAPI (SOCWatch backend)
   ├─ Scenario loader (JSON packs)
   ├─ Session store (in-memory lab state)
   ├─ Enrichment service (simulated intel)

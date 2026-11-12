@@ -1,4 +1,4 @@
-# Aegis Learning Guide — Simulated Phishing & IR
+# SOCWatch Learning Guide — Simulated Phishing & IR
 
 ## Goal
 

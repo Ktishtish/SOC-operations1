@@ -1,4 +1,4 @@
-"""API tests for Aegis SOC Lab."""
+"""API tests for SOCWatch."""
 
 from __future__ import annotations
 
