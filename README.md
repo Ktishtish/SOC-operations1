@@ -4,7 +4,7 @@
 ---
 **Focus:** Simulated Phishing Attack & Incident Response
 
-SOCWatch is a defensive training platform that builds Security Operations Center (SOC) skills through realistic, **simulated** phishing campaigns. Analysts practice alert triage, email/header analysis, IOC enrichment, containment, and NIST-aligned incident response — coached by an embedded AI SOC assistant.
+SOCWatch is a defensive training platform that builds Security Operations Center (SOC) skills through realistic, **simulated** phishing campaigns. Analysts practice alert triage, email/header analysis, IOC enrichment, containment, and NIST-aligned incident response, coached by an embedded AI SOC assistant.
 
 > This project is for **education and blue-team skill building only**. It does not send real phishing mail, exploit systems, or provide offensive attack tooling.
 
