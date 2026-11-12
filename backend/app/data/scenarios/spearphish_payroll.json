@@ -1,0 +1,360 @@
+{
+  "id": "spearphish_payroll",
+  "title": "Spear-Phishing: Fake Payroll Portal",
+  "difficulty": "beginner",
+  "description": "An employee receives a convincing payroll update email. Investigate the alert chain from mailbox delivery through credential submission and lateral movement attempts.",
+  "mitre_tactics": ["Initial Access", "Credential Access", "Collection"],
+  "estimated_minutes": 25,
+  "learning_objectives": [
+    "Triage phishing alerts using header and URL analysis",
+    "Identify credential harvesting indicators",
+    "Execute containment for compromised accounts",
+    "Document an incident following NIST IR phases"
+  ],
+  "emails": [
+    {
+      "id": "email-001",
+      "from_address": "payroll-noreply@acme-hr-portal.com",
+      "from_display": "ACME Payroll Services",
+      "to_address": "jordan.lee@acme.corp",
+      "subject": "Action Required: Verify your direct deposit details by Friday",
+      "received_at": "2026-03-12T09:14:22Z",
+      "body_text": "Hello Jordan,\n\nOur records show your direct deposit information needs verification after the recent HR system upgrade.\n\nPlease confirm your banking details within 48 hours to avoid payment delays:\nhttps://acme-hr-portal.com/verify/direct-deposit?uid=jl8841\n\nIf you did not request this, ignore this message.\n\nRegards,\nACME Payroll Team",
+      "body_html_preview": "ACME Payroll Services — verify direct deposit via link. Urgency language and lookalike domain.",
+      "headers": {
+        "Return-Path": "<bounce@mail.acme-hr-portal.com>",
+        "Received": "from mail.acme-hr-portal.com (198.51.100.44) by mx.acme.corp",
+        "Authentication-Results": "mx.acme.corp; spf=fail smtp.mailfrom=acme-hr-portal.com; dkim=none; dmarc=fail",
+        "Reply-To": "support@acme-hr-portal.com",
+        "X-Mailer": "MassMailer Pro 3.2",
+        "Message-ID": "<phish8821@mail.acme-hr-portal.com>"
+      },
+      "urls": [
+        "https://acme-hr-portal.com/verify/direct-deposit?uid=jl8841"
+      ],
+      "attachments": [],
+      "spoof_indicators": [
+        "SPF fail",
+        "DMARC fail",
+        "DKIM none",
+        "Lookalike domain (acme-hr-portal.com vs acme.corp)",
+        "Urgency / payment threat language",
+        "Generic greeting with first name only"
+      ]
+    }
+  ],
+  "alerts": [
+    {
+      "id": "alert-001",
+      "title": "Suspicious inbound email — lookalike payroll domain",
+      "description": "Email security gateway flagged inbound message with SPF/DMARC failures and domain similarity to ACME brand.",
+      "severity": "medium",
+      "created_at": "2026-03-12T09:14:40Z",
+      "source": "Email Security Gateway",
+      "category": "phishing",
+      "mitre_techniques": ["T1566.002"],
+      "related_email_id": "email-001",
+      "related_user": "jordan.lee@acme.corp",
+      "related_host": null,
+      "iocs": [
+        {
+          "type": "domain",
+          "value": "acme-hr-portal.com",
+          "context": "Sender and link domain",
+          "malicious": true,
+          "reputation": "newly registered / phishing kit"
+        },
+        {
+          "type": "url",
+          "value": "https://acme-hr-portal.com/verify/direct-deposit?uid=jl8841",
+          "context": "Credential harvest landing page",
+          "malicious": true,
+          "reputation": "known phishing URL pattern"
+        },
+        {
+          "type": "email",
+          "value": "payroll-noreply@acme-hr-portal.com",
+          "context": "Spoofed sender",
+          "malicious": true,
+          "reputation": "untrusted"
+        },
+        {
+          "type": "ip",
+          "value": "198.51.100.44",
+          "context": "Sending MTA",
+          "malicious": true,
+          "reputation": "bulletproof hosting ASN"
+        }
+      ],
+      "raw_evidence": {
+        "gateway_score": 78,
+        "url_rewrite": false,
+        "sandbox": "not detonated"
+      }
+    },
+    {
+      "id": "alert-002",
+      "title": "User clicked phishing URL — jordan.lee",
+      "description": "Proxy logs show jordan.lee browsed to acme-hr-portal.com credential page from workstation WS-JL-042.",
+      "severity": "high",
+      "created_at": "2026-03-12T09:21:05Z",
+      "source": "Secure Web Gateway",
+      "category": "user_click",
+      "mitre_techniques": ["T1566.002", "T1204"],
+      "related_email_id": "email-001",
+      "related_user": "jordan.lee@acme.corp",
+      "related_host": "WS-JL-042",
+      "iocs": [
+        {
+          "type": "url",
+          "value": "https://acme-hr-portal.com/verify/direct-deposit?uid=jl8841",
+          "context": "Clicked URL",
+          "malicious": true,
+          "reputation": "phishing"
+        },
+        {
+          "type": "host",
+          "value": "WS-JL-042",
+          "context": "Source workstation",
+          "malicious": false,
+          "reputation": "corporate asset"
+        },
+        {
+          "type": "user",
+          "value": "jordan.lee@acme.corp",
+          "context": "Affected user",
+          "malicious": false,
+          "reputation": "employee"
+        }
+      ],
+      "raw_evidence": {
+        "http_status": 200,
+        "user_agent": "Mozilla/5.0 Chrome/122.0",
+        "bytes": 48210
+      }
+    },
+    {
+      "id": "alert-003",
+      "title": "Possible credential submission to phishing site",
+      "description": "POST to /api/auth/login on acme-hr-portal.com from jordan.lee session; UEBA marks anomalous auth pattern.",
+      "severity": "critical",
+      "created_at": "2026-03-12T09:22:18Z",
+      "source": "UEBA / Proxy",
+      "category": "credential_harvest",
+      "mitre_techniques": ["T1056", "T1078"],
+      "related_email_id": "email-001",
+      "related_user": "jordan.lee@acme.corp",
+      "related_host": "WS-JL-042",
+      "iocs": [
+        {
+          "type": "domain",
+          "value": "acme-hr-portal.com",
+          "context": "Credential POST destination",
+          "malicious": true,
+          "reputation": "phishing"
+        },
+        {
+          "type": "user",
+          "value": "jordan.lee@acme.corp",
+          "context": "Likely compromised credentials",
+          "malicious": false,
+          "reputation": "high risk"
+        }
+      ],
+      "raw_evidence": {
+        "method": "POST",
+        "path": "/api/auth/login",
+        "form_fields_detected": ["username", "password", "routing", "account"]
+      }
+    },
+    {
+      "id": "alert-004",
+      "title": "Impossible travel / anomalous SSO login",
+      "description": "SSO login for jordan.lee from IP 203.0.113.88 (ASN: HostingCo, GE) 11 minutes after corporate login from HQ.",
+      "severity": "critical",
+      "created_at": "2026-03-12T09:33:44Z",
+      "source": "Identity Provider",
+      "category": "account_takeover",
+      "mitre_techniques": ["T1078.004"],
+      "related_email_id": "email-001",
+      "related_user": "jordan.lee@acme.corp",
+      "related_host": null,
+      "iocs": [
+        {
+          "type": "ip",
+          "value": "203.0.113.88",
+          "context": "Suspicious SSO source",
+          "malicious": true,
+          "reputation": "anonymous hosting"
+        },
+        {
+          "type": "user",
+          "value": "jordan.lee@acme.corp",
+          "context": "Compromised account suspected",
+          "malicious": false,
+          "reputation": "compromised"
+        }
+      ],
+      "raw_evidence": {
+        "mfa": "bypassed_via_session_token",
+        "app": "Office 365",
+        "geo": "Tbilisi, GE"
+      }
+    }
+  ],
+  "timeline": [
+    {
+      "id": "tl-001",
+      "timestamp": "2026-03-12T09:14:22Z",
+      "source": "Mail Gateway",
+      "actor": "attacker",
+      "action": "email_delivered",
+      "detail": "Phishing email delivered to jordan.lee@acme.corp",
+      "severity": "medium"
+    },
+    {
+      "id": "tl-002",
+      "timestamp": "2026-03-12T09:21:05Z",
+      "source": "SWG",
+      "actor": "jordan.lee",
+      "action": "url_clicked",
+      "detail": "User clicked credential harvest URL",
+      "severity": "high"
+    },
+    {
+      "id": "tl-003",
+      "timestamp": "2026-03-12T09:22:18Z",
+      "source": "SWG",
+      "actor": "jordan.lee",
+      "action": "credentials_submitted",
+      "detail": "POST of username/password to phishing portal",
+      "severity": "critical"
+    },
+    {
+      "id": "tl-004",
+      "timestamp": "2026-03-12T09:33:44Z",
+      "source": "IdP",
+      "actor": "attacker",
+      "action": "sso_login",
+      "detail": "Attacker authenticated as jordan.lee from 203.0.113.88",
+      "severity": "critical"
+    },
+    {
+      "id": "tl-005",
+      "timestamp": "2026-03-12T09:36:02Z",
+      "source": "M365",
+      "actor": "attacker",
+      "action": "mailbox_rule_created",
+      "detail": "Inbox rule: forward finance* to external dropbox",
+      "severity": "high"
+    }
+  ],
+  "playbook": [
+    {
+      "id": "pb-01",
+      "phase": "detection",
+      "title": "Confirm phishing indicators",
+      "description": "Validate SPF/DMARC failures, lookalike domain, and urgency language.",
+      "guidance": "Open the email evidence. Check Authentication-Results and compare the link domain to acme.corp.",
+      "action_type": "analyze",
+      "action_payload": {"focus": "email-001"}
+    },
+    {
+      "id": "pb-02",
+      "phase": "detection",
+      "title": "Enrich IOCs",
+      "description": "Look up domain, URL, and attacker IP reputation.",
+      "guidance": "Use Enrichment on acme-hr-portal.com and 203.0.113.88 before containment.",
+      "action_type": "enrich",
+      "action_payload": {"iocs": ["acme-hr-portal.com", "203.0.113.88"]}
+    },
+    {
+      "id": "pb-03",
+      "phase": "containment",
+      "title": "Block phishing domain and URL",
+      "description": "Prevent further employees from reaching the harvest site.",
+      "guidance": "Execute block_domain on acme-hr-portal.com and block_url on the harvest link.",
+      "action_type": "containment",
+      "action_payload": {"action": "block_domain", "target": "acme-hr-portal.com"}
+    },
+    {
+      "id": "pb-04",
+      "phase": "containment",
+      "title": "Reset compromised credentials & revoke sessions",
+      "description": "Invalidate jordan.lee credentials and active SSO sessions.",
+      "guidance": "Run reset_password and revoke_session for jordan.lee@acme.corp.",
+      "action_type": "containment",
+      "action_payload": {"action": "reset_password", "target": "jordan.lee@acme.corp"}
+    },
+    {
+      "id": "pb-05",
+      "phase": "eradication",
+      "title": "Remove attacker mailbox persistence",
+      "description": "Delete malicious inbox forwarding rule and audit mailbox access.",
+      "guidance": "Note the forward rule on finance* mail; document eradication in incident notes.",
+      "action_type": "document",
+      "action_payload": {"artifact": "mailbox_rule"}
+    },
+    {
+      "id": "pb-06",
+      "phase": "recovery",
+      "title": "User awareness & monitoring",
+      "description": "Notify jordan.lee, enable heightened monitoring for 7 days.",
+      "guidance": "Complete recovery checklist and close with lessons learned.",
+      "action_type": "document",
+      "action_payload": {"artifact": "user_notify"}
+    },
+    {
+      "id": "pb-07",
+      "phase": "lessons_learned",
+      "title": "Capture detection gaps",
+      "description": "Identify why the email was delivered and how click-to-ATO time can be reduced.",
+      "guidance": "Recommend DMARC reject, URL rewriting, and faster click-alert correlation.",
+      "action_type": "document",
+      "action_payload": {"artifact": "postmortem"}
+    }
+  ],
+  "enrichment_db": {
+    "acme-hr-portal.com": {
+      "ioc_type": "domain",
+      "reputation": "malicious — phishing kit hosting",
+      "related_campaigns": ["PayrollUpdate-2026", "HR-Spoof-Cluster-B"],
+      "whois_summary": "Registered 2026-03-08 via PrivacyProtect; registrant country: PA",
+      "dns_records": {"A": ["198.51.100.44"], "MX": ["mail.acme-hr-portal.com"], "NS": ["ns1.bullet-dns.net"]},
+      "risk_score": 92,
+      "analyst_guidance": "Block at DNS/proxy. Domain age < 7 days is a strong phishing signal."
+    },
+    "203.0.113.88": {
+      "ioc_type": "ip",
+      "reputation": "suspicious — anonymous VPS",
+      "related_campaigns": ["ATO-CloudMail-3"],
+      "whois_summary": "HostingCo LLC — bulletproof-leaning ASN",
+      "dns_records": {"PTR": ["none"]},
+      "risk_score": 85,
+      "analyst_guidance": "Block at IdP conditional access; correlate with other ATO alerts."
+    },
+    "198.51.100.44": {
+      "ioc_type": "ip",
+      "reputation": "malicious — phishing MTA",
+      "related_campaigns": ["PayrollUpdate-2026"],
+      "whois_summary": "Same ASN as harvest site",
+      "dns_records": {"PTR": ["mail.acme-hr-portal.com"]},
+      "risk_score": 88,
+      "analyst_guidance": "Add to email gateway blocklist."
+    },
+    "https://acme-hr-portal.com/verify/direct-deposit?uid=jl8841": {
+      "ioc_type": "url",
+      "reputation": "malicious — credential harvest",
+      "related_campaigns": ["PayrollUpdate-2026"],
+      "whois_summary": null,
+      "dns_records": null,
+      "risk_score": 95,
+      "analyst_guidance": "Block URL path and parent domain; capture screenshot for evidence."
+    }
+  },
+  "scoring": {
+    "correct_containment_targets": ["acme-hr-portal.com", "jordan.lee@acme.corp", "203.0.113.88", "https://acme-hr-portal.com/verify/direct-deposit?uid=jl8841"],
+    "required_actions": ["block_domain", "reset_password", "revoke_session"],
+    "critical_alerts": ["alert-003", "alert-004"]
+  }
+}
