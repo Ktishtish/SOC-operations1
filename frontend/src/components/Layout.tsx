@@ -8,7 +8,7 @@ export function Layout() {
           <div className="brand-glyph">◈</div>
           <div className="brand-word">
             SOCWatch
-            <span>SOC Lab</span>
+            <span>Lab</span>
           </div>
         </NavLink>
         <nav className="nav-links">
