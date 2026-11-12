@@ -1,0 +1,280 @@
+{
+  "id": "business_email_compromise",
+  "title": "BEC: Vendor Invoice Redirect",
+  "difficulty": "intermediate",
+  "description": "Finance receives a wire-change request appearing to come from a trusted vendor CFO. Practice BEC detection, payment fraud IR, and executive communication.",
+  "mitre_tactics": ["Initial Access", "Credential Access", "Impact"],
+  "estimated_minutes": 35,
+  "learning_objectives": [
+    "Distinguish BEC from classic credential-harvest phishing",
+    "Trace email path and reply-chain manipulation",
+    "Coordinate with finance to stop fraudulent payments",
+    "Apply vendor-verification IR playbook steps"
+  ],
+  "emails": [
+    {
+      "id": "email-101",
+      "from_address": "cfo@northwind-suppl1es.com",
+      "from_display": "Elena Vargas | Northwind Supplies",
+      "to_address": "finance.ap@acme.corp",
+      "subject": "RE: INV-44921 — Updated banking details for Friday wire",
+      "received_at": "2026-03-11T16:02:11Z",
+      "body_text": "Hi team,\n\nQuick update — our bank changed processors this week. Please use the attached details for INV-44921 ($184,500) instead of the previous account.\n\nI am in back-to-back meetings; call me only if the wire cannot go out today.\n\nThanks,\nElena Vargas\nCFO, Northwind Supplies",
+      "body_html_preview": "Reply-looking BEC with lookalike vendor domain (suppl1es) and urgency around a large wire.",
+      "headers": {
+        "Return-Path": "<bounce@northwind-suppl1es.com>",
+        "Received": "from smtp.northwind-suppl1es.com (203.0.113.20) by mx.acme.corp",
+        "Authentication-Results": "mx.acme.corp; spf=pass smtp.mailfrom=northwind-suppl1es.com; dkim=pass; dmarc=pass",
+        "In-Reply-To": "<legit-thread-44921@acme.corp>",
+        "References": "<legit-thread-44921@acme.corp>",
+        "Reply-To": "elena.vargas@proton-securemail.com"
+      },
+      "urls": [],
+      "attachments": [
+        {
+          "name": "INV-44921_bank_update.pdf",
+          "sha256": "a3f1c9e8b2d04711deadbeefcafebabe0123456789abcdef0123456789abcdef",
+          "type": "application/pdf"
+        }
+      ],
+      "spoof_indicators": [
+        "Lookalike domain: northwind-suppl1es.com (digit 1 instead of i)",
+        "Reply-To differs from From (proton-securemail.com)",
+        "Hijacked thread references (In-Reply-To on legitimate invoice thread)",
+        "Urgent large payment change",
+        "Discourages phone verification"
+      ]
+    }
+  ],
+  "alerts": [
+    {
+      "id": "alert-101",
+      "title": "BEC-style payment change — lookalike vendor domain",
+      "description": "DLP/email risk engine flagged AP mailbox message with vendor lookalike domain and payment-change language.",
+      "severity": "high",
+      "created_at": "2026-03-11T16:02:30Z",
+      "source": "Email Risk Engine",
+      "category": "bec",
+      "mitre_techniques": ["T1566.002", "T1534"],
+      "related_email_id": "email-101",
+      "related_user": "finance.ap@acme.corp",
+      "related_host": null,
+      "iocs": [
+        {
+          "type": "domain",
+          "value": "northwind-suppl1es.com",
+          "context": "Lookalike vendor domain",
+          "malicious": true,
+          "reputation": "newly registered BEC infrastructure"
+        },
+        {
+          "type": "email",
+          "value": "elena.vargas@proton-securemail.com",
+          "context": "Reply-To drop address",
+          "malicious": true,
+          "reputation": "untrusted consumer mail"
+        },
+        {
+          "type": "filename",
+          "value": "INV-44921_bank_update.pdf",
+          "context": "Fraudulent bank instructions",
+          "malicious": true,
+          "reputation": "social engineering lure"
+        }
+      ],
+      "raw_evidence": {
+        "payment_amount": 184500,
+        "invoice": "INV-44921",
+        "spf_dkim_dmarc": "pass on lookalike domain"
+      }
+    },
+    {
+      "id": "alert-102",
+      "title": "Finance analyst opened BEC attachment",
+      "description": "Endpoint telemetry: sam.okafor@acme.corp opened INV-44921_bank_update.pdf from Outlook.",
+      "severity": "medium",
+      "created_at": "2026-03-11T16:18:44Z",
+      "source": "EDR",
+      "category": "user_interaction",
+      "mitre_techniques": ["T1204.002"],
+      "related_email_id": "email-101",
+      "related_user": "sam.okafor@acme.corp",
+      "related_host": "WS-SO-018",
+      "iocs": [
+        {
+          "type": "hash",
+          "value": "a3f1c9e8b2d04711deadbeefcafebabe0123456789abcdef0123456789abcdef",
+          "context": "PDF attachment hash",
+          "malicious": false,
+          "reputation": "non-malware lure document"
+        },
+        {
+          "type": "host",
+          "value": "WS-SO-018",
+          "context": "AP analyst workstation",
+          "malicious": false,
+          "reputation": "corporate asset"
+        }
+      ],
+      "raw_evidence": {
+        "process": "AcroRd32.exe",
+        "malware_score": 2
+      }
+    },
+    {
+      "id": "alert-103",
+      "title": "Wire initiation request submitted in ERP",
+      "description": "ERP audit: draft wire to new beneficiary account ****9912 for $184,500 tagged to INV-44921.",
+      "severity": "critical",
+      "created_at": "2026-03-11T16:41:09Z",
+      "source": "ERP Audit Log",
+      "category": "fraud_attempt",
+      "mitre_techniques": ["T1566", "Impact"],
+      "related_email_id": "email-101",
+      "related_user": "sam.okafor@acme.corp",
+      "related_host": null,
+      "iocs": [
+        {
+          "type": "user",
+          "value": "sam.okafor@acme.corp",
+          "context": "Initiator of draft wire",
+          "malicious": false,
+          "reputation": "employee — social engineered"
+        }
+      ],
+      "raw_evidence": {
+        "beneficiary": "NW Holdings LLC",
+        "account_last4": "9912",
+        "status": "pending_approval"
+      }
+    }
+  ],
+  "timeline": [
+    {
+      "id": "tl-101",
+      "timestamp": "2026-03-11T16:02:11Z",
+      "source": "Mail Gateway",
+      "actor": "attacker",
+      "action": "bec_email_delivered",
+      "detail": "Lookalike vendor CFO email to finance.ap",
+      "severity": "high"
+    },
+    {
+      "id": "tl-102",
+      "timestamp": "2026-03-11T16:18:44Z",
+      "source": "EDR",
+      "actor": "sam.okafor",
+      "action": "attachment_opened",
+      "detail": "Opened bank-update PDF",
+      "severity": "medium"
+    },
+    {
+      "id": "tl-103",
+      "timestamp": "2026-03-11T16:41:09Z",
+      "source": "ERP",
+      "actor": "sam.okafor",
+      "action": "wire_draft_created",
+      "detail": "Draft wire $184,500 to new beneficiary",
+      "severity": "critical"
+    },
+    {
+      "id": "tl-104",
+      "timestamp": "2026-03-11T16:55:00Z",
+      "source": "SOC",
+      "actor": "system",
+      "action": "waiting_analyst",
+      "detail": "Payment still pending dual approval — window to stop fraud",
+      "severity": "critical"
+    }
+  ],
+  "playbook": [
+    {
+      "id": "pb-11",
+      "phase": "detection",
+      "title": "Validate vendor domain authenticity",
+      "description": "Compare northwind-suppl1es.com to the real vendor domain and check Reply-To mismatch.",
+      "guidance": "BEC often passes SPF/DKIM because attackers own the lookalike domain. Focus on brand impersonation.",
+      "action_type": "analyze",
+      "action_payload": {"focus": "email-101"}
+    },
+    {
+      "id": "pb-12",
+      "phase": "containment",
+      "title": "Halt the pending wire",
+      "description": "Contact finance to cancel/hold INV-44921 wire before approval.",
+      "guidance": "Document the hold in incident notes; this is the highest-priority business action.",
+      "action_type": "document",
+      "action_payload": {"artifact": "payment_hold"}
+    },
+    {
+      "id": "pb-13",
+      "phase": "containment",
+      "title": "Block lookalike domain and Reply-To",
+      "description": "Block northwind-suppl1es.com and the external Reply-To address.",
+      "guidance": "Use block_domain on the lookalike and note the proton Reply-To for intel sharing.",
+      "action_type": "containment",
+      "action_payload": {"action": "block_domain", "target": "northwind-suppl1es.com"}
+    },
+    {
+      "id": "pb-14",
+      "phase": "eradication",
+      "title": "Purge BEC message from mailboxes",
+      "description": "Search and remove the BEC thread from AP distribution lists.",
+      "guidance": "Record mailbox purge in notes; verify no other invoices were targeted.",
+      "action_type": "document",
+      "action_payload": {"artifact": "mailbox_purge"}
+    },
+    {
+      "id": "pb-15",
+      "phase": "recovery",
+      "title": "Out-of-band vendor verification",
+      "description": "Call known-good vendor contact using directory number — not email Reply-To.",
+      "guidance": "Confirm real banking details and whether Northwind was compromised.",
+      "action_type": "document",
+      "action_payload": {"artifact": "vendor_callback"}
+    },
+    {
+      "id": "pb-16",
+      "phase": "lessons_learned",
+      "title": "Strengthen payment change controls",
+      "description": "Recommend dual approval + callback policy for beneficiary changes over threshold.",
+      "guidance": "Capture control recommendations for finance and email security.",
+      "action_type": "document",
+      "action_payload": {"artifact": "postmortem"}
+    }
+  ],
+  "enrichment_db": {
+    "northwind-suppl1es.com": {
+      "ioc_type": "domain",
+      "reputation": "malicious — BEC lookalike",
+      "related_campaigns": ["VendorCFO-Wire-Redirect"],
+      "whois_summary": "Registered 2026-03-09; privacy-protected; visually mimics northwind-supplies.com",
+      "dns_records": {"A": ["203.0.113.20"], "MX": ["smtp.northwind-suppl1es.com"]},
+      "risk_score": 90,
+      "analyst_guidance": "Homoglyph/digit substitution on vendor brands is a classic BEC tell."
+    },
+    "elena.vargas@proton-securemail.com": {
+      "ioc_type": "email",
+      "reputation": "suspicious — consumer mail used for fraud",
+      "related_campaigns": ["VendorCFO-Wire-Redirect"],
+      "whois_summary": null,
+      "dns_records": null,
+      "risk_score": 80,
+      "analyst_guidance": "Reply-To mismatch is high-signal for BEC even when SPF passes."
+    },
+    "203.0.113.20": {
+      "ioc_type": "ip",
+      "reputation": "suspicious — short-lived VPS mailer",
+      "related_campaigns": ["VendorCFO-Wire-Redirect"],
+      "whois_summary": "HostingCo LLC",
+      "dns_records": {"PTR": ["none"]},
+      "risk_score": 78,
+      "analyst_guidance": "Block at gateway; share with ISACs if payment fraud attempted."
+    }
+  },
+  "scoring": {
+    "correct_containment_targets": ["northwind-suppl1es.com", "elena.vargas@proton-securemail.com"],
+    "required_actions": ["block_domain"],
+    "critical_alerts": ["alert-101", "alert-103"]
+  }
+}

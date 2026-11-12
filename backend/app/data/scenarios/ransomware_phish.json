@@ -1,0 +1,342 @@
+{
+  "id": "ransomware_phish",
+  "title": "Malicious Macro Phish → Ransomware Precursor",
+  "difficulty": "advanced",
+  "description": "A shipping-label macro document leads to beaconing and ransomware staging. Practice multi-stage phishing IR across email, endpoint, and network.",
+  "mitre_tactics": ["Initial Access", "Execution", "Command and Control", "Impact"],
+  "estimated_minutes": 45,
+  "learning_objectives": [
+    "Correlate email, EDR, and C2 alerts into one incident",
+    "Contain hosts before ransomware detonation",
+    "Extract and action multi-type IOCs under time pressure",
+    "Prioritize IR phases when impact is imminent"
+  ],
+  "emails": [
+    {
+      "id": "email-201",
+      "from_address": "tracking@fedex-shipment-updates.net",
+      "from_display": "FedEx Delivery Manager",
+      "to_address": "warehouse.ops@acme.corp",
+      "subject": "Delivery exception — label correction required for package 7834412290",
+      "received_at": "2026-03-10T07:48:03Z",
+      "body_text": "Your package requires a label correction.\n\nOpen the attached Shipping_Label_7834412290.docm and enable content to view the corrected label.\n\nFedEx Automated Notifications",
+      "body_html_preview": "Shipment lure with macro-enabled Office attachment (.docm).",
+      "headers": {
+        "Return-Path": "<noreply@fedex-shipment-updates.net>",
+        "Received": "from mta.fedex-shipment-updates.net (198.51.100.77) by mx.acme.corp",
+        "Authentication-Results": "mx.acme.corp; spf=fail; dkim=fail; dmarc=fail",
+        "X-Attachment-Names": "Shipping_Label_7834412290.docm"
+      },
+      "urls": [
+        "https://fedex-shipment-updates.net/track/7834412290"
+      ],
+      "attachments": [
+        {
+          "name": "Shipping_Label_7834412290.docm",
+          "sha256": "f00dbabe111122223333444455556666777788889999aaaabbbbccccddddeeee",
+          "type": "application/vnd.ms-word.document.macroEnabled.12"
+        }
+      ],
+      "spoof_indicators": [
+        "Macro-enabled .docm attachment",
+        "Brand impersonation (FedEx)",
+        "SPF/DKIM/DMARC all fail",
+        "Enable-content instruction"
+      ]
+    }
+  ],
+  "alerts": [
+    {
+      "id": "alert-201",
+      "title": "Macro-enabled phishing attachment delivered",
+      "description": "Gateway allowed .docm after user override on quarantine; brand impersonation detected.",
+      "severity": "high",
+      "created_at": "2026-03-10T07:48:20Z",
+      "source": "Email Security Gateway",
+      "category": "phishing",
+      "mitre_techniques": ["T1566.001"],
+      "related_email_id": "email-201",
+      "related_user": "warehouse.ops@acme.corp",
+      "related_host": null,
+      "iocs": [
+        {
+          "type": "domain",
+          "value": "fedex-shipment-updates.net",
+          "context": "Phishing sender domain",
+          "malicious": true,
+          "reputation": "malicious"
+        },
+        {
+          "type": "hash",
+          "value": "f00dbabe111122223333444455556666777788889999aaaabbbbccccddddeeee",
+          "context": "Malicious macro document",
+          "malicious": true,
+          "reputation": "trojan downloader"
+        },
+        {
+          "type": "filename",
+          "value": "Shipping_Label_7834412290.docm",
+          "context": "Attachment name",
+          "malicious": true,
+          "reputation": "macro lure"
+        }
+      ],
+      "raw_evidence": {
+        "quarantine_override": true,
+        "override_user": "warehouse.ops@acme.corp"
+      }
+    },
+    {
+      "id": "alert-202",
+      "title": "Office spawned powershell — WS-WH-007",
+      "description": "EDR: WINWORD.EXE → powershell.exe encoded command downloading payload from 198.51.100.91.",
+      "severity": "critical",
+      "created_at": "2026-03-10T07:55:12Z",
+      "source": "EDR",
+      "category": "malware_execution",
+      "mitre_techniques": ["T1059.001", "T1204.002"],
+      "related_email_id": "email-201",
+      "related_user": "warehouse.ops@acme.corp",
+      "related_host": "WS-WH-007",
+      "iocs": [
+        {
+          "type": "host",
+          "value": "WS-WH-007",
+          "context": "Infected endpoint",
+          "malicious": true,
+          "reputation": "compromised"
+        },
+        {
+          "type": "ip",
+          "value": "198.51.100.91",
+          "context": "Payload download / C2",
+          "malicious": true,
+          "reputation": "malware C2"
+        },
+        {
+          "type": "hash",
+          "value": "f00dbabe111122223333444455556666777788889999aaaabbbbccccddddeeee",
+          "context": "Parent document hash",
+          "malicious": true,
+          "reputation": "malicious"
+        }
+      ],
+      "raw_evidence": {
+        "cmdline": "powershell -enc JABjAGwAaQBlAG4AdAAgA...",
+        "child_process": "update_svc.exe"
+      }
+    },
+    {
+      "id": "alert-203",
+      "title": "C2 beaconing from WS-WH-007",
+      "description": "Netflow: periodic HTTPS beacons to 198.51.100.91 every 60s; JA3 matches known loader family.",
+      "severity": "critical",
+      "created_at": "2026-03-10T08:02:40Z",
+      "source": "NDR",
+      "category": "c2",
+      "mitre_techniques": ["T1071.001"],
+      "related_email_id": "email-201",
+      "related_user": "warehouse.ops@acme.corp",
+      "related_host": "WS-WH-007",
+      "iocs": [
+        {
+          "type": "ip",
+          "value": "198.51.100.91",
+          "context": "C2 server",
+          "malicious": true,
+          "reputation": "active C2"
+        },
+        {
+          "type": "host",
+          "value": "WS-WH-007",
+          "context": "Beaconing host",
+          "malicious": true,
+          "reputation": "compromised"
+        }
+      ],
+      "raw_evidence": {
+        "interval_sec": 60,
+        "ja3": "a0e9f5c60619fc4cd679338381e82317"
+      }
+    },
+    {
+      "id": "alert-204",
+      "title": "Ransomware staging — volume shadow deletion attempt",
+      "description": "EDR: vssadmin delete shadows on WS-WH-007; encryption not yet started.",
+      "severity": "critical",
+      "created_at": "2026-03-10T08:11:05Z",
+      "source": "EDR",
+      "category": "ransomware_precursor",
+      "mitre_techniques": ["T1490", "T1486"],
+      "related_email_id": "email-201",
+      "related_user": "warehouse.ops@acme.corp",
+      "related_host": "WS-WH-007",
+      "iocs": [
+        {
+          "type": "host",
+          "value": "WS-WH-007",
+          "context": "Ransomware staging host",
+          "malicious": true,
+          "reputation": "imminent impact"
+        },
+        {
+          "type": "filename",
+          "value": "update_svc.exe",
+          "context": "Ransomware staging binary",
+          "malicious": true,
+          "reputation": "ransomware loader"
+        }
+      ],
+      "raw_evidence": {
+        "vssadmin": "delete shadows /all /quiet",
+        "encryption_started": false
+      }
+    }
+  ],
+  "timeline": [
+    {
+      "id": "tl-201",
+      "timestamp": "2026-03-10T07:48:03Z",
+      "source": "Mail Gateway",
+      "actor": "attacker",
+      "action": "email_delivered",
+      "detail": "Macro phish delivered to warehouse.ops",
+      "severity": "high"
+    },
+    {
+      "id": "tl-202",
+      "timestamp": "2026-03-10T07:54:50Z",
+      "source": "EDR",
+      "actor": "warehouse.ops",
+      "action": "macro_enabled",
+      "detail": "User enabled content on Shipping_Label docm",
+      "severity": "high"
+    },
+    {
+      "id": "tl-203",
+      "timestamp": "2026-03-10T07:55:12Z",
+      "source": "EDR",
+      "actor": "malware",
+      "action": "powershell_stager",
+      "detail": "Office spawned encoded PowerShell downloader",
+      "severity": "critical"
+    },
+    {
+      "id": "tl-204",
+      "timestamp": "2026-03-10T08:02:40Z",
+      "source": "NDR",
+      "actor": "malware",
+      "action": "c2_beacon",
+      "detail": "Beaconing to 198.51.100.91",
+      "severity": "critical"
+    },
+    {
+      "id": "tl-205",
+      "timestamp": "2026-03-10T08:11:05Z",
+      "source": "EDR",
+      "actor": "malware",
+      "action": "vss_delete",
+      "detail": "Shadow copy deletion — ransomware imminent",
+      "severity": "critical"
+    }
+  ],
+  "playbook": [
+    {
+      "id": "pb-21",
+      "phase": "containment",
+      "title": "Isolate compromised host immediately",
+      "description": "Network-isolate WS-WH-007 before encryption begins.",
+      "guidance": "Imminent ransomware — isolate_host first, investigate second.",
+      "action_type": "containment",
+      "action_payload": {"action": "isolate_host", "target": "WS-WH-007"}
+    },
+    {
+      "id": "pb-22",
+      "phase": "containment",
+      "title": "Block C2 and phishing infrastructure",
+      "description": "Block 198.51.100.91 and fedex-shipment-updates.net.",
+      "guidance": "Use block_domain / network blocks for C2 IP and lure domain.",
+      "action_type": "containment",
+      "action_payload": {"action": "block_domain", "target": "fedex-shipment-updates.net"}
+    },
+    {
+      "id": "pb-23",
+      "phase": "detection",
+      "title": "Hunt for lateral movement",
+      "description": "Search EDR for update_svc.exe and same hash elsewhere.",
+      "guidance": "Document hunt scope; check whether other warehouse hosts opened the mail.",
+      "action_type": "document",
+      "action_payload": {"artifact": "threat_hunt"}
+    },
+    {
+      "id": "pb-24",
+      "phase": "eradication",
+      "title": "Remove malware and persistence",
+      "description": "EDR wipe/reimage decision for WS-WH-007; kill update_svc.exe persistence.",
+      "guidance": "Prefer reimage for ransomware staging hosts.",
+      "action_type": "document",
+      "action_payload": {"artifact": "reimage"}
+    },
+    {
+      "id": "pb-25",
+      "phase": "recovery",
+      "title": "Restore host and validate backups",
+      "description": "Confirm VSS impact and backup integrity before returning host to service.",
+      "guidance": "Encryption had not started — still verify backup health.",
+      "action_type": "document",
+      "action_payload": {"artifact": "backup_check"}
+    },
+    {
+      "id": "pb-26",
+      "phase": "lessons_learned",
+      "title": "Hardening: macro & quarantine policy",
+      "description": "Disable quarantine overrides for macro docs; block .docm at gateway.",
+      "guidance": "User override was the key control failure.",
+      "action_type": "document",
+      "action_payload": {"artifact": "postmortem"}
+    }
+  ],
+  "enrichment_db": {
+    "fedex-shipment-updates.net": {
+      "ioc_type": "domain",
+      "reputation": "malicious — brand phishing",
+      "related_campaigns": ["ShipMacro-Loader-9"],
+      "whois_summary": "Registered 2026-03-01; privacy proxy",
+      "dns_records": {"A": ["198.51.100.77"]},
+      "risk_score": 93,
+      "analyst_guidance": "Block domain and related mail infrastructure."
+    },
+    "198.51.100.91": {
+      "ioc_type": "ip",
+      "reputation": "malicious — active C2",
+      "related_campaigns": ["ShipMacro-Loader-9", "LockBit-precursor-cluster"],
+      "whois_summary": "Bulletproof VPS",
+      "dns_records": {"PTR": ["none"]},
+      "risk_score": 98,
+      "analyst_guidance": "Block egress immediately; isolate communicating hosts."
+    },
+    "f00dbabe111122223333444455556666777788889999aaaabbbbccccddddeeee": {
+      "ioc_type": "hash",
+      "reputation": "malicious — macro downloader",
+      "related_campaigns": ["ShipMacro-Loader-9"],
+      "whois_summary": null,
+      "dns_records": null,
+      "risk_score": 96,
+      "analyst_guidance": "Quarantine hash enterprise-wide; block .docm macros."
+    },
+    "WS-WH-007": {
+      "ioc_type": "host",
+      "reputation": "compromised — ransomware staging",
+      "related_campaigns": ["ShipMacro-Loader-9"],
+      "whois_summary": null,
+      "dns_records": null,
+      "risk_score": 99,
+      "analyst_guidance": "Isolate now. Do not power off if memory forensics required — network isolate first."
+    }
+  },
+  "scoring": {
+    "correct_containment_targets": ["WS-WH-007", "fedex-shipment-updates.net", "198.51.100.91"],
+    "required_actions": ["isolate_host", "block_domain"],
+    "critical_alerts": ["alert-202", "alert-203", "alert-204"]
+  }
+}
